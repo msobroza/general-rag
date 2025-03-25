@@ -21,6 +21,7 @@ stop-words = "^2018.7.23"
 faiss-cpu = "^1.7.4"
 sentence-transformers = "^2.2.2"
 torch = {version = "^2.5.1+cu121", allow-prereleases = true, source = "pytorch-cu121"}
+rank-bm25 = "^0.2.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

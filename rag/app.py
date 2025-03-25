@@ -6,6 +6,7 @@ import tempfile
 import io
 import uuid
 import re
+from typing import List
 from streamlit_pdf_viewer import pdf_viewer
 from langchain.chains import RetrievalQA
 from langchain_community.document_loaders import PyPDFium2Loader
@@ -21,7 +22,7 @@ from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers.multi_query import MultiQueryRetriever
 from langchain_core.prompts import PromptTemplate
 from langchain.prompts.chat import SystemMessagePromptTemplate, ChatPromptTemplate
-from langchain_openai import OpenAI
+from langchain.chat_models import ChatOpenAI
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -148,14 +149,14 @@ def main():
         "LLM Temperature", min_value=0.0, max_value=1.0, value=0.0, step=0.05
     )
     ANSWER_MAX_TOKENS = st.sidebar.slider(
-        "Max tokens Generation", min_value=0, max_value=1000, value=250, step=50
+        "Max tokens Generation", min_value=0, max_value=8000, value=4000, step=100
     )
 
     # Document chunking settings
     st.sidebar.markdown("---")
     st.sidebar.header("✂️ Chunking settings")
     CHUNK_SIZE = st.sidebar.slider(
-        "Chunk size (number of chars)", min_value=0, max_value=1000, value=500, step=50
+        "Chunk size (number of chars)", min_value=0, max_value=1600, value=900, step=50
     )
     CHUNK_OVERLAP = st.sidebar.slider(
         "Chunk overlap (number of chars)",
@@ -179,7 +180,7 @@ def main():
             "max_tokens": ANSWER_MAX_TOKENS,
             "temperature": ANSWER_TEMP,
         }
-        llm = OpenAI(
+        llm = ChatOpenAI(
             api_key=OPENAI_API_KEY,
             model=api_params["model"],
             max_tokens=api_params["max_tokens"],
@@ -358,6 +359,10 @@ def main():
             k (int): Maximum number of non-PDF pages to parse.
             k_pdf (int): Maximum number of PDF pages to parse.
         """
+        
+        base_retriever: BaseRetriever
+        k: int
+        k_pdf: int
 
         def _get_relevant_documents(self, query, *, run_manager):
             """Get relevant documents with selective page parsing.
@@ -398,6 +403,9 @@ def main():
             documents (List[Document]): List of documents to search through.
             base_retriever (BaseRetriever): The underlying retriever to use for document retrieval.
         """
+        
+        documents: List[Document]
+        base_retriever: BaseRetriever
 
         def _get_relevant_documents(self, query, *, run_manager):
             """Get relevant documents using hypothetical document generation.
@@ -441,14 +449,14 @@ def main():
             """Initialize and return the LLM for hypothesis generation.
 
             Returns:
-                OpenAI: Configured OpenAI LLM instance for hypothesis generation.
+                ChatOpenAI: Configured ChatOpenAI LLM instance for hypothesis generation.
             """
             api_params = {
                 "model": LLM_MODEL_NAME,
                 "max_tokens": HYPOTHESIS_MAX_TOKENS,
                 "temperature": HYPOTHESIS_TEMP,
             }
-            llm = OpenAI(
+            llm = ChatOpenAI(
                 api_key=OPENAI_API_KEY,
                 model=api_params["model"],
                 max_tokens=api_params["max_tokens"],
@@ -766,24 +774,18 @@ def main():
             return None
     # Custom prompt for the QA chain
     CUSTOM_PROMPT_TEMPLATE = """
-    Use the following pieces of context to answer the user question. If you
-    don't know the answer, just say that you don't know, don't try to make up an
-    answer. Your answer shouldn't support elements outside the context
+    Use the following pieces of context to answer the user question. If you don't know the answer, just say that you don't know.
 
     {context}
 
     Question: {question}
 
-    Please provide your answer using same language of the given Question in the following JSON format: 
+    Provide your response strictly in the following JSON format without extra text or markdown:
+
     {{
         "answer": "Your detailed answer here",
-        "sources": "Direct sentences or paragraphs from the context that support 
-            your answers. ONLY RELEVANT TEXT DIRECTLY FROM THE DOCUMENTS. DO NOT 
-            ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING."
+        "sources": ["Source sentence 1", "Source sentence 2"]
     }}
-
-    The JSON must be a valid json format and can be read with json.loads() in
-    Python. Answer:
     """
 
     CUSTOM_PROMPT = PromptTemplate(
@@ -801,18 +803,13 @@ def main():
 
 
     def preprocess_result(result_str):
-        """Clean up LLM output to ensure valid JSON format.
-
-        Args:
-            result_str (str): Raw LLM output string.
-
-        Returns:
-            str: Cleaned and formatted JSON string.
-        """
-        result_str = result_str.strip("`")
+        result_str = result_str.strip()
+        result_str = result_str.strip("```json").strip("```").strip("`")
+        result_str = result_str.replace("\n", "").replace("\r", "")
         if not result_str.endswith("}"):
-            result_str += '"}'
+            result_str += "}"
         return result_str
+
 
 
     def clear_cache_and_session_state():
@@ -926,6 +923,8 @@ def main():
                     parsed_result = json.loads(result["result"])
                 except json.JSONDecodeError:
                     # Handle JSON parsing errors
+                    st.error(f"JSON decoding error: {e}")
+                    st.write("Raw LLM response:", result["result"])
                     st.error("There was an error parsing the response. Please try again.")
                     parsed_result = dict()
                     parsed_result["answer"] = result["result"]
