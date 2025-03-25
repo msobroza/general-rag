@@ -1,10 +1,9 @@
 [tool.poetry]
 name = "general-rag"
 version = "0.1.0"
-description = ""
-authors = ["Your Name <you@example.com>"]
+description = "A general-purpose RAG application with multilingual support"
+authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
-packages = [{include = "rag"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -12,17 +11,25 @@ streamlit = "^1.43.2"
 streamlit-pdf-viewer = "^0.0.21"
 langchain = "^0.3.21"
 docling = "^2.28.0"
-black = "^25.1.0"
 langchain-community = "^0.3.20"
 langchain-openai = "^0.3.10"
 langchain-huggingface = "^0.1.2"
 langchain-text-splitters = "^0.3.7"
 dotenv = "^0.9.9"
 langdetect = "^1.0.9"
-pymupdf = "^1.25.4"
 stop-words = "^2018.7.23"
+faiss-cpu = "^1.7.4"
+sentence-transformers = "^2.2.2"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+black = "^25.1.0"
+isort = "^5.13.2"
+flake8 = "^7.0.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+start = "rag.app:main"
