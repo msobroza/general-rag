@@ -20,6 +20,7 @@ langdetect = "^1.0.9"
 stop-words = "^2018.7.23"
 faiss-cpu = "^1.7.4"
 sentence-transformers = "^2.2.2"
+torch = {version = "^2.5.1+cu121", allow-prereleases = true, source = "pytorch-cu121"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
@@ -33,3 +34,9 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 start = "rag.app:main"
+
+[[tool.poetry.source]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+priority = "explicit"
+
